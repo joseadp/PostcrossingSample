@@ -1,0 +1,163 @@
+﻿@{
+    ViewBag.Title = "Postcrossing Sample";
+}
+
+
+@section scripts {
+    <style type="text/css">
+        table {
+            border: 1px solid #000;
+            border-collapse: collapse;
+            color: #666666;
+            min-width: 200px;
+        }
+
+        tr {
+            border: 1px solid #000;
+            line-height: 25px;
+        }
+
+        th {
+            background-color: #B1C3CC;
+            color: #000;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th, td {
+            padding-left: 5px;
+        }
+
+        #status {
+            color: red;
+        }
+    </style>
+
+    <script src="@Url.Content("~/Scripts/knockout-2.2.0.debug.js")" type="text/javascript"></script>
+    <script type="text/javascript">
+
+        function ViewModel() {
+
+            var self = this;
+
+            // A nested view model that represents a single postcard.
+            function PostcardViewModel(postcard) {
+                var self = this;
+
+                self.Id = postcard.Id;
+                self.CountryCode = postcard.CountryCode;
+                self.PostcardNumber = postcard.PostcardNumber;
+                self.PostcardId = postcard.CountryCode + "-" + postcard.PostcardNumber;
+                self.DestinationCountry = postcard.DestinationCountry;
+                self.ToMember = postcard.ToMember;
+                self.SentDate = postcard.SentDate;
+            }
+
+            self.postcards = ko.observableArray();   // Contains the list of postcards
+            self.postcard = ko.observable();
+
+            self.status = ko.observable();
+
+            // Get a list of all products
+            self.getAll = function () {
+
+                self.postcards.removeAll();
+                $.getJSON("/api/postcards", function (postcards) {
+                    $.each(postcards, function (index, postcard) {
+                        self.postcards.push(new PostcardViewModel(postcard));
+                    })
+                });
+            }
+
+            self.create = function () {
+                self.status("");
+
+                var postcard = {
+                    CountryCode: "BR",
+                    PostcardNumber: 123456
+                };
+
+                $.ajax({
+                    url: 'api/products',
+                    cache: false,
+                    type: 'POST',
+                    contentType: 'application/json; charset=utf-8',
+                    data: JSON.stringify(postcard),
+                    statusCode: {
+                        201 /*Created*/: function (data) {
+                            self.postcards.push(data);
+                        }
+                    }
+                })
+                .fail(
+                function (xhr, textStatus, err) {
+                    self.status(err);
+                });
+
+            }
+
+            // Initialize the view-model
+            $.getJSON("/api/postcards", function (postcards) {
+                $.each(postcards, function (index, postcard) {
+                    self.postcards.push(new PostcardViewModel(postcard));
+                })
+            });
+
+        }
+
+        function clearStatus() {
+            $('#status').html('');
+        }
+
+        // I still do not understand where this method is called.
+        function add() {
+
+            clearStatus();
+
+            var product = ko.toJS(viewModel);
+            var json = JSON.stringify(product);
+
+            $.ajax({
+                url: API_URL,
+                cache: false,
+                type: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                data: json,
+                statusCode: {
+                    201 /*Created*/: function (data) {
+                        self.postcards.push(data);
+                    }
+                }
+            });
+        }
+
+        var viewModel = new ViewModel();
+        ko.applyBindings(viewModel);
+
+        // Initialize jQuery tab widget
+        $("#tabs").tabs();
+
+    </script>
+}
+
+
+<div id="body">
+    <section class="content-wrapper main-content">
+        <h3>Postcards</h3>
+
+        <table id="postcards">
+            <thead>
+                <tr><th>Postcard ID</th><th>To member</th><th>To Country</th><th>Sent</th></tr>
+            </thead>
+            <tbody data-bind="foreach: postcards">
+                <tr>
+                    <td data-bind="text: PostcardId"></td>
+                    <td data-bind="text: ToMember"></td>
+                    <td data-bind="text: DestinationCountry"></td>
+                    <td data-bind="text: SentDate"></td>
+                </tr>
+            </tbody>
+        </table>
+
+    </section>
+</div>
